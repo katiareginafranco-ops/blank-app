@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-
+pip list
 
 st.set_page_config(
     page_title="Análise das Causas de Nota Zero na Redação do ENEM 2024",
@@ -145,28 +145,56 @@ st.markdown("""
 """)
 st.markdown("---")
 
-# carregar dataset
-import streamlit as st
-import pandas as pd
+st.set_page_config(page_title="Análise ENEM ES 2024", layout="wide")
 
-# Título do app
-st.title("Análise da Redação - ENEM ES 2024")
+st.title("📚 Análise da Redação - ENEM ES 2024")
 
-# Upload do arquivo CSV
-arquivo = st.file_uploader("Carregue o arquivo ENEM_ES_2024_REDAÇÃO.csv", type=["csv"])
+# Função para carregar os dados com cache
+@st.cache_data
+def carregar_dados(uploaded_file):
+    df = pd.read_csv(uploaded_file)
+    return df
 
-# Verifica se o arquivo foi carregado
-if arquivo is not None:
-    # Lê o CSV em um DataFrame
-    df = pd.read_csv(arquivo)
+# Upload do arquivo
+uploaded_file = st.file_uploader("Carregue o arquivo ENEM_ES_2024_REDAÇÃO.csv", type="csv")
 
-    # Exibe os dados
-    st.subheader("Prévia dos Dados")
-    st.write(df.head())
+if uploaded_file:
+    df = carregar_dados(uploaded_file)
+    st.success("Arquivo carregado com sucesso!")
 
-    # Informações básicas
-    st.subheader("Informações Gerais")
-    st.write(df.describe())
+    # Visualização inicial
+    if st.checkbox("👀 Visualizar primeiras linhas da tabela"):
+        st.write(df.head())
+
+    # Sidebar para filtros
+    st.sidebar.header("🔍 Filtros")
+    municipios = sorted(df['NOME MUN. PROVA'].dropna().unique())
+    status_redacao = sorted(df['STATUS REDAÇÃO'].dropna().unique())
+    tipos_escola = sorted(df['DEP. ADMIN.'].dropna().unique())
+
+    municipio_filtro = st.sidebar.multiselect("Filtrar por Município", municipios, default=municipios)
+    status_filtro = st.sidebar.multiselect("Filtrar por Status da Redação", status_redacao, default=status_redacao)
+    escola_filtro = st.sidebar.multiselect("Filtrar por Tipo de Escola", tipos_escola, default=tipos_escola)
+
+    df_filtrado = df[
+        (df['NOME MUN. PROVA'].isin(municipio_filtro)) &
+        (df['STATUS REDAÇÃO'].isin(status_filtro)) &
+        (df['DEP. ADMIN.'].isin(escola_filtro))
+    ]
+
+    st.markdown("## 📍 Incidência do Status da Redação por Município")
+    incidencia = df_filtrado.groupby(['NOME MUN. PROVA', 'STATUS REDAÇÃO']).size().unstack(fill_value=0)
+
+    fig1, ax1 = plt.subplots(figsize=(12, 6))
+    incidencia.plot(kind='bar', stacked=True, ax=ax1)
+    ax1.set_title("Incidência do Status da Redação por Município")
+    ax1.set_xlabel("Município")
+    ax3.set_ylabel("Quantidade")
+    ax3.legend(title="Status", bbox_to_anchor=(1.05, 1), loc='upper left')
+    st.pyplot(fig3)
+
+    st.markdown("## 📄 Exibição da Tabela Completa Filtrada")
+    st.dataframe(df_filtrado)
+
 else:
-    st.info("Por favor, carregue o arquivo CSV.")
-
+    st.info("Por favor, carregue o arquivo CSV para iniciar a análise.")
