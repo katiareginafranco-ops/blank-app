@@ -1,4 +1,7 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
+
 
 st.set_page_config(
     page_title="Análise das Causas de Nota Zero na Redação do ENEM 2024",
@@ -142,99 +145,28 @@ st.markdown("""
 """)
 st.markdown("---")
 
+# carregar dataset
 import streamlit as st
 import pandas as pd
 
-# --- Configurações Iniciais e Título ---
-st.set_page_config(
-    page_title="Análise Descritiva de Dados do ENEM",
-    layout="wide"
-)
+# Título do app
+st.title("Análise da Redação - ENEM ES 2024")
 
-st.title('📊 Análise Descritiva Interativa do ENEM')
-st.markdown('---')
+# Upload do arquivo CSV
+arquivo = st.file_uploader("Carregue o arquivo ENEM_ES_2024_REDAÇÃO.csv", type=["csv"])
 
-# Função para carregar dados de forma eficiente (cache)
-# Isso evita recarregar o arquivo toda vez que o Streamlit interage
-@st.cache_data
-def load_data(uploaded_file):
-    """Lê o arquivo CSV e retorna um DataFrame do Pandas."""
-    # Tenta ler com diferentes separadores e encodings, comum em arquivos brasileiros
-    try:
-        # Tentativa comum para arquivos brasileiros (separador ';')
-        df = pd.read_csv(uploaded_file, sep=';', encoding='latin1', low_memory=False)
-    except Exception:
-        # Tentativa padrão (separador ',' e encoding 'utf-8')
-        uploaded_file.seek(0) # Volta ao início do arquivo se a primeira leitura falhou
-        df = pd.read_csv(uploaded_file, encoding='utf-8', low_memory=False)
-    
-    return df
+# Verifica se o arquivo foi carregado
+if arquivo is not None:
+    # Lê o CSV em um DataFrame
+    df = pd.read_csv(arquivo)
 
-# --- Upload do Arquivo ---
-uploaded_file = st.file_uploader(
-    "📤 Escolha o arquivo CSV do ENEM (ex: ENEM_ES_2024.csv)",
-    type="csv"
-)
+    # Exibe os dados
+    st.subheader("Prévia dos Dados")
+    st.write(df.head())
 
-if uploaded_file is not None:
-    # Carregando os dados
-    df = load_data(uploaded_file)
-    st.success(f'Arquivo carregado com sucesso! Total de linhas: {len(df):,}')
-
-    st.markdown('---')
-
-    # 1. Tabela Descritiva (Pandas describe())
-    st.header('1. Tabela Descritiva dos Dados Numéricos')
-    st.info('Usamos `df.describe().T` para gerar as estatísticas das colunas numéricas (Média, Desvio Padrão, Mínimo, Máximo, Quartis).')
-    
-    try:
-        # Transpõe (.T) o describe para que as estatísticas fiquem nas colunas e as variáveis nas linhas
-        # Formata os números para duas casas decimais
-        st.dataframe(
-            df.describe().T.style.format("{:.2f}"),
-            use_container_width=True
-        )
-    except Exception as e:
-        st.error(f"Não foi possível gerar as estatísticas descritivas. Verifique a estrutura do seu CSV. Erro: {e}")
-        st.dataframe(df.head()) # Mostra o cabeçalho para debug
-
-    st.markdown('---')
-
-    # 2. Gráfico de Barras (st.bar_chart)
-    # Exemplo: Comparação da Média da Nota de Redação por Gênero
-    st.header('2. Gráfico de Barras com st.bar_chart')
-    st.subheader('Média da Nota de Redação por Gênero (Exemplo)')
-    st.write('Para o gráfico, calculamos a média da coluna **NU_NOTA_REDACAO** agrupada pela coluna **TP_SEXO**.')
-
-    # Colunas comuns no ENEM para este exemplo
-    GENDER_COL = 'TP_SEXO'
-    SCORE_COL = 'NU_NOTA_REDACAO'
-    
-    # Verifica se as colunas necessárias existem na base
-    if GENDER_COL in df.columns and SCORE_COL in df.columns:
-        
-        # Filtra para remover valores nulos ou inválidos na coluna da nota
-        df_filtered = df.dropna(subset=[SCORE_COL])
-        
-        # Agregação: Calcula a média da nota de redação por gênero
-        chart_data = df_filtered.groupby(GENDER_COL)[SCORE_COL].mean().reset_index()
-        
-        # Renomeia as colunas para melhor clareza no gráfico
-        chart_data.columns = ['Gênero', 'Média da Redação'] 
-        
-        # Exibe o gráfico de barras
-        st.bar_chart(
-            chart_data, 
-            x='Gênero', 
-            y='Média da Redação', 
-            color="#279930" # Cor verde para destaque
-        )
-        
-        st.caption('Tabela de dados usada para o gráfico:')
-        st.dataframe(chart_data)
-
-    else:
-        st.warning(f"As colunas essenciais ('{GENDER_COL}' ou '{SCORE_COL}') não foram encontradas no seu arquivo para gerar o gráfico. Por favor, ajuste o código para usar colunas existentes.")
-        
+    # Informações básicas
+    st.subheader("Informações Gerais")
+    st.write(df.describe())
 else:
-    st.info("⚠️ Por favor, faça o upload do seu arquivo CSV para começar a análise.")
+    st.info("Por favor, carregue o arquivo CSV.")
+
