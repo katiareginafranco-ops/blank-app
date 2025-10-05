@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-pip list
+import matplotlib.pyplot as plt
 
 st.set_page_config(
     page_title="Análise das Causas de Nota Zero na Redação do ENEM 2024",
@@ -149,6 +149,34 @@ st.set_page_config(page_title="Análise ENEM ES 2024", layout="wide")
 
 st.title("📚 Análise da Redação - ENEM ES 2024")
 
+# 📝 Apresentação da seção de análise
+st.markdown("""
+## ✍️ Análise dos Status da Redação
+
+Nesta seção, você pode analisar como as redações foram avaliadas pela banca.  
+Cada tipo de status — como *em branco*, *anulada*, *válida*, entre outros — é representado por um número específico, descrito na tabela abaixo.  
+
+Essas informações ajudam a entender a distribuição dos participantes por status da redação, considerando **município** e **tipo de escola**.
+
+---
+
+### 🗂️ Tabela de Códigos de Status da Redação
+
+| Código | Descrição                           |
+|--------|-------------------------------------|
+| 1      | Sem problemas                       |
+| 2      | Anulada                             |
+| 3      | Cópia do texto motivador            |
+| 4      | Em branco                           |
+| 6      | Fuga ao tema                        |
+| 7      | Não atendimento ao tipo textual     |
+| 8      | Texto insuficiente                  |
+| 9      | Parte desconectada                  |
+
+---
+""")
+st.markdown("---")
+
 # Função para carregar os dados com cache
 @st.cache_data
 def carregar_dados(uploaded_file):
@@ -162,12 +190,13 @@ if uploaded_file:
     df = carregar_dados(uploaded_file)
     st.success("Arquivo carregado com sucesso!")
 
-    # Visualização inicial
+    # 🔎 Visualização inicial
     if st.checkbox("👀 Visualizar primeiras linhas da tabela"):
         st.write(df.head())
 
-    # Sidebar para filtros
+    # 🎛️ Sidebar para filtros
     st.sidebar.header("🔍 Filtros")
+
     municipios = sorted(df['NOME MUN. PROVA'].dropna().unique())
     status_redacao = sorted(df['STATUS REDAÇÃO'].dropna().unique())
     tipos_escola = sorted(df['DEP. ADMIN.'].dropna().unique())
@@ -176,12 +205,18 @@ if uploaded_file:
     status_filtro = st.sidebar.multiselect("Filtrar por Status da Redação", status_redacao, default=status_redacao)
     escola_filtro = st.sidebar.multiselect("Filtrar por Tipo de Escola", tipos_escola, default=tipos_escola)
 
+    # 🧹 Aplicando os filtros
     df_filtrado = df[
         (df['NOME MUN. PROVA'].isin(municipio_filtro)) &
         (df['STATUS REDAÇÃO'].isin(status_filtro)) &
         (df['DEP. ADMIN.'].isin(escola_filtro))
     ]
 
+    # 🧾 Tabela completa (movida para antes da análise)
+    st.markdown("## 📄 Exibição da Tabela Completa Filtrada")
+    st.dataframe(df_filtrado)
+
+    # 📊 Gráfico de incidência
     st.markdown("## 📍 Incidência do Status da Redação por Município")
     incidencia = df_filtrado.groupby(['NOME MUN. PROVA', 'STATUS REDAÇÃO']).size().unstack(fill_value=0)
 
@@ -189,12 +224,32 @@ if uploaded_file:
     incidencia.plot(kind='bar', stacked=True, ax=ax1)
     ax1.set_title("Incidência do Status da Redação por Município")
     ax1.set_xlabel("Município")
-    ax3.set_ylabel("Quantidade")
-    ax3.legend(title="Status", bbox_to_anchor=(1.05, 1), loc='upper left')
-    st.pyplot(fig3)
-
-    st.markdown("## 📄 Exibição da Tabela Completa Filtrada")
-    st.dataframe(df_filtrado)
+    ax1.set_ylabel("Quantidade")
+    ax1.legend(title="Status", bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xticks(rotation=90)
+    st.pyplot(fig1)
 
 else:
     st.info("Por favor, carregue o arquivo CSV para iniciar a análise.")
+
+# 📊 Gráfico: Incidência do Status da Redação por Município
+
+st.markdown("## 📍 Incidência do Status da Redação por Município")
+
+# Agrupa e transforma os dados para gráfico
+incidencia = df_filtrado.groupby(['NOME MUN. PROVA', 'STATUS REDAÇÃO']).size().unstack(fill_value=0)
+
+# Criação do gráfico com matplotlib
+fig, ax = plt.subplots(figsize=(12, 6))
+incidencia.plot(kind='bar', stacked=True, ax=ax, colormap='tab20c')
+
+# Personalização
+ax.set_title("Incidência do Status da Redação por Município")
+ax.set_xlabel("Município")
+ax.set_ylabel("Status da Redação")
+ax.legend(title="Status da Redação", bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.xticks(rotation=90)
+plt.tight_layout()
+
+# Exibe no Streamlit
+st.pyplot(fig)
