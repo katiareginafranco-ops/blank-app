@@ -177,79 +177,250 @@ Essas informações ajudam a entender a distribuição dos participantes por sta
 """)
 st.markdown("---")
 
+# Configuração da página
+st.set_page_config(layout="wide", page_title="Análise ENEM Redação")
+st.title("📊 Análise de Dados do ENEM")
+st.markdown("---")
+
 # Função para carregar os dados com cache
+# Usamos st.cache_data para evitar recarregar o arquivo sempre que a página for alterada
 @st.cache_data
 def carregar_dados(uploaded_file):
-    df = pd.read_csv(uploaded_file)
-    return df
+    """Carrega o arquivo CSV em um DataFrame do Pandas."""
+    try:
+        # Tenta ler o arquivo
+        df = pd.read_csv(uploaded_file, sep=',', encoding='utf-8')
+        # Limpa nomes de colunas (opcional, mas boa prática)
+        df.columns = df.columns.str.strip()
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar o arquivo. Certifique-se de que é um CSV válido. Detalhe: {e}")
+        return pd.DataFrame()
 
 # Upload do arquivo
-uploaded_file = st.file_uploader("Carregue o arquivo ENEM_ES_2024_REDAÇÃO.csv", type="csv")
+uploaded_file = st.file_uploader("📥ENEM_ES_2024_REDAÇÃO.csv", type=["csv"])
 
-if uploaded_file:
+df = pd.DataFrame()
+df_filtrado = pd.DataFrame()
+if uploaded_file is not None:
     df = carregar_dados(uploaded_file)
-    st.success("Arquivo carregado com sucesso!")
+    
+    if not df.empty:
+        st.success("Arquivo carregado com sucesso! Utilize a barra lateral para aplicar os filtros.")
 
-    # 🔎 Visualização inicial
-    if st.checkbox("👀 Visualizar primeiras linhas da tabela"):
-        st.write(df.head())
+        # 🔎 Visualização inicial
+        if st.checkbox("👀 Visualizar primeiras linhas da tabela"):
+            st.subheader("Primeiras 5 Linhas")
+            st.dataframe(df.head())
 
-    # 🎛️ Sidebar para filtros
-    st.sidebar.header("🔍 Filtros")
+        # 🎛️ Sidebar para filtros
+        st.sidebar.header("🔍 Configuração de Filtros")
 
-    municipios = sorted(df['NOME MUN. PROVA'].dropna().unique())
-    status_redacao = sorted(df['STATUS REDAÇÃO'].dropna().unique())
-    tipos_escola = sorted(df['DEP. ADMIN.'].dropna().unique())
+        # Garante que as colunas existem antes de tentar acessar
+        try:
+            municipios = sorted(df['NOME MUN. PROVA'].dropna().unique())
+            status_redacao = sorted(df['STATUS REDAÇÃO'].dropna().unique())
+            tipos_escola = sorted(df['DEP. ADMIN.'].dropna().unique())
+        except KeyError as e:
+            st.error(f"Erro: Coluna {e} não encontrada no arquivo. Verifique se o cabeçalho está correto.")
+            st.stop()
+            
+        # Controles Multiselect
+        municipio_filtro = st.sidebar.multiselect("Filtrar por Município", municipios, default=municipios)
+        status_filtro = st.sidebar.multiselect("Filtrar por Status da Redação", status_redacao, default=status_redacao)
+        escola_filtro = st.sidebar.multiselect("Filtrar por Tipo de Escola", tipos_escola, default=tipos_escola)
 
-    municipio_filtro = st.sidebar.multiselect("Filtrar por Município", municipios, default=municipios)
-    status_filtro = st.sidebar.multiselect("Filtrar por Status da Redação", status_redacao, default=status_redacao)
-    escola_filtro = st.sidebar.multiselect("Filtrar por Tipo de Escola", tipos_escola, default=tipos_escola)
+        # 🧹 Aplicando os filtros
+        df_filtrado = df[
+            (df['NOME MUN. PROVA'].isin(municipio_filtro)) &
+            (df['STATUS REDAÇÃO'].isin(status_filtro)) &
+            (df['DEP. ADMIN.'].isin(escola_filtro))
+        ]
 
-    # 🧹 Aplicando os filtros
-    df_filtrado = df[
-        (df['NOME MUN. PROVA'].isin(municipio_filtro)) &
-        (df['STATUS REDAÇÃO'].isin(status_filtro)) &
-        (df['DEP. ADMIN.'].isin(escola_filtro))
-    ]
+        # Resultados dos Filtros (Usa df_filtrado)
+        st.markdown("---")
+        st.subheader(f"Resultados Filtrados ({len(df_filtrado)} registros)")
 
-    # 🧾 Tabela completa (movida para antes da análise)
-    st.markdown("## 📄 Exibição da Tabela Completa Filtrada")
-    st.dataframe(df_filtrado)
+        if df_filtrado.empty:
+            st.warning("Nenhum dado corresponde aos filtros selecionados.")
+        else:
+            # 1. Estatísticas Rápidas
+            st.markdown("##### Estatísticas da Redação")
+            
+             # Prepara os cálculos dos Status
+            most_frequent_status, least_frequent_status, most_frequent_count, least_frequent_count = ('N/A', 'N/A', 0, 0)
+            status_exists = 'STATUS REDAÇÃO' in df_filtrado.columns
+            if status_exists:
+                status_counts = df_filtrado['STATUS REDAÇÃO'].value_counts()
+                if not status_counts.empty:
+                    most_frequent_status = status_counts.index[0]
+                    most_frequent_count = status_counts.iloc[0]
+                    # Encontra o menos frequente de forma segura
+                    if len(status_counts) > 1:
+                        least_frequent_status = status_counts.index[-1]
+                        least_frequent_count = status_counts.iloc[-1]
+                    else:
+                        # Se só houver um status, ele é o mais e menos frequente
+                        least_frequent_status = most_frequent_status
+            
+            # Linha 1: Contagem e Status de Ocorrência
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total de Candidatos Filtrados", len(df_filtrado))
+            
+            # Métrica de maior ocorrência (Status)
+            col2.metric("Status Redação de Maior Ocorrência", most_frequent_status, delta=f"{most_frequent_count} registros" if status_exists else None)
+            
+            # Métrica de menor ocorrência (Status)
+            col3.metric("Status Redação de Menor Ocorrência", least_frequent_status, delta=f"{least_frequent_count} registros" if status_exists and len(status_counts) > 1 else None)
+            st.markdown("---")
+            
+            # 2. Visualização da Tabela Filtrada
+            st.markdown("## 📄 Exibição da Tabela Completa Filtrada")
+            st.dataframe(df_filtrado, use_container_width=True)
+            
+            # 3. Download
+            @st.cache_data
+            def convert_df(df):
+                # Converte o DataFrame para CSV para download
+                return df.to_csv(index=False).encode('utf-8')
 
-    # 📊 Gráfico de incidência
-    st.markdown("## 📍 Incidência do Status da Redação por Município")
-    incidencia = df_filtrado.groupby(['NOME MUN. PROVA', 'STATUS REDAÇÃO']).size().unstack(fill_value=0)
+            csv = convert_df(df_filtrado)
 
-    fig1, ax1 = plt.subplots(figsize=(12, 6))
-    incidencia.plot(kind='bar', stacked=True, ax=ax1)
-    ax1.set_title("Incidência do Status da Redação por Município")
-    ax1.set_xlabel("Município")
-    ax1.set_ylabel("Quantidade")
-    ax1.legend(title="Status", bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.xticks(rotation=90)
-    st.pyplot(fig1)
+            st.download_button(
+                label="⬇️ Baixar Dados Filtrados (CSV)",
+                data=csv,
+                file_name='enem_dados_filtrados.csv',
+                mime='text/csv',
+            )
+            
+    else:
+        st.warning("O DataFrame carregado está vazio. Verifique a estrutura do seu arquivo CSV.")
 
-else:
-    st.info("Por favor, carregue o arquivo CSV para iniciar a análise.")
+        st.markdown("---")
 
-# 📊 Gráfico: Incidência do Status da Redação por Município
+    # 2. Geração do Mapa de Calor (Distribuição de Status por Município)
+            # df_mapa_status é necessário para o Heatmap e para o Gráfico de Barras Agrupadas (Seção 5)
+    df_mapa_status = pd.DataFrame() # Inicializa fora do if para evitar erro de escopo no Bloco 5
+    if status_exists and 'NOME MUN. PROVA' in df_filtrado.columns:
+                st.markdown("---")
+                st.subheader("🔥 Mapa de Calor: Distribuição do Status da Redação por Município")
 
-st.markdown("## 📍 Incidência do Status da Redação por Município")
+                # Agrupando os dados filtrados para calcular a contagem de cada status por município
+                df_mapa_status = df_filtrado.groupby(['NOME MUN. PROVA', 'STATUS REDAÇÃO']).size().reset_index(name='Contagem Status')
 
-# Agrupa e transforma os dados para gráfico
-incidencia = df_filtrado.groupby(['NOME MUN. PROVA', 'STATUS REDAÇÃO']).size().unstack(fill_value=0)
+                # Criando o mapa de calor de Status vs. Município com Altair
+                heatmap_chart_status = alt.Chart(df_mapa_status).mark_rect().encode(
+                    # Eixo X: Município (Nome da Prova)
+                    x=alt.X('NOME MUN. PROVA', sort='y', title='Município de Prova'),
+                    # Eixo Y: Status da Redação (Aprovado, Anulada, etc.)
+                    y=alt.Y('STATUS REDAÇÃO', title='Status da Redação'),
+                    # Cor: Contagem de Status (intensidade do calor)
+                    color=alt.Color('Contagem Status', 
+                                    # Usando uma escala de cores (heatmap) adequada para contagens
+                                    scale=alt.Scale(range='viridis'), 
+                                    title='Contagem'),
+                    # Tooltip para exibir detalhes ao passar o mouse
+                    tooltip=['NOME MUN. PROVA', 'STATUS REDAÇÃO', 'Contagem Status']
+                ).properties(
+                    # Título do gráfico e largura total
+                    title="Contagem de Cada Status de Redação por Município",
+                ).interactive() # Permite zoom e pan
 
-# Criação do gráfico com matplotlib
-fig, ax = plt.subplots(figsize=(12, 6))
-incidencia.plot(kind='bar', stacked=True, ax=ax, colormap='tab20c')
+                # Exibe o gráfico no Streamlit
+                st.altair_chart(heatmap_chart_status, use_container_width=True)
+    else:
+                st.warning("Não é possível gerar o mapa de calor. As colunas 'NOME MUN. PROVA' e/ou 'STATUS REDAÇÃO' não foram encontradas.")
+            
+            
+            # ----------------------------------------------------------------------
+    # 3. Geração do Gráfico de Pizza (Proporção de Status)
+    if status_exists:
+                st.markdown("---")
+                st.subheader("🥧 Proporção Total dos Status da Redação")
 
-# Personalização
-ax.set_title("Incidência do Status da Redação por Município")
-ax.set_xlabel("Município")
-ax.set_ylabel("Status da Redação")
-ax.legend(title="Status da Redação", bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.xticks(rotation=90)
-plt.tight_layout()
+                # Reutiliza status_counts calculado anteriormente
+                df_pizza = status_counts.reset_index(name='Contagem').rename(columns={'index': 'STATUS REDAÇÃO'})
 
-# Exibe no Streamlit
-st.pyplot(fig)
+                # Calcula a porcentagem para o tooltip
+                total_count = df_pizza['Contagem'].sum()
+                df_pizza['Porcentagem'] = (df_pizza['Contagem'] / total_count) * 100
+
+                base = alt.Chart(df_pizza).encode(
+                    theta=alt.Theta("Contagem", stack=True)
+                )
+
+                pie_chart = base.mark_arc(outerRadius=120).encode(
+                    color=alt.Color("STATUS REDAÇÃO", title="Status"),
+                    # Ordena as fatias por contagem (maior para menor)
+                    order=alt.Order("Contagem", sort="descending"),
+                    tooltip=["STATUS REDAÇÃO", "Contagem", alt.Tooltip("Porcentagem", format=".1f", title="Percentual")]
+                ).properties(
+                    title="Distribuição Percentual de Status"
+                )
+
+                # Adiciona texto no centro do gráfico (para um donut chart, mas funciona para pie)
+                text = base.mark_text(radius=140).encode(
+                    text=alt.Text("Porcentagem", format=".1f"),
+                    order=alt.Order("Contagem", sort="descending"),
+                    color=alt.value("black") # Define a cor do texto para melhor contraste
+                )
+
+                # Combina o gráfico de pizza e o texto
+                final_chart = pie_chart.interactive()
+                
+                # Exibe o gráfico no Streamlit
+                st.altair_chart(final_chart, use_container_width=True)
+
+            # ----------------------------------------------------------------------
+    # 4. Geração do Gráfico de Barras (Distribuição do Status da Redação)
+    if 'STATUS REDAÇÃO' in df_filtrado.columns and not df_filtrado['STATUS REDAÇÃO'].empty:
+                st.markdown("---")
+                st.subheader("📊 Gráfico de Barras: Frequência Global do Status da Redação")
+
+                # Cria o gráfico de barras
+                bar_chart = alt.Chart(df_filtrado).mark_bar().encode(
+                    # Eixo X: STATUS REDAÇÃO (Variável Categórica)
+                    x=alt.X('STATUS REDAÇÃO', title='Status da Redação', sort='-y'),
+                    # Eixo Y: Contagem de registros (frequência)
+                    y=alt.Y('count()', title='Frequência (Contagem de Candidatos)'),
+                    # Tooltip para interação
+                    tooltip=[
+                        alt.Tooltip('STATUS REDAÇÃO', title='Status'),
+                        'count()'
+                    ]
+                ).properties(
+                    title='Frequência dos Status da Redação no ENEM'
+                ).interactive()
+
+                st.altair_chart(bar_chart, use_container_width=True)
+    else:
+                st.info("Não é possível gerar o Gráfico de Barras. A coluna 'STATUS REDAÇÃO' não foi encontrada ou não possui dados válidos na seleção atual.")
+
+            # ----------------------------------------------------------------------
+        # 5. Geração do Gráfico de Barras Agrupadas (Comparação Status x Município)
+    if not df_mapa_status.empty:
+                st.markdown("---")
+                st.subheader("📊 Comparação: Frequência de Status por Município")
+                st.caption("Cada cor representa um município, e as barras mostram a contagem de cada Status da Redação.")
+
+        # Cria o Gráfico de Barras Agrupadas
+                grouped_bar_chart = alt.Chart(df_mapa_status).mark_bar().encode(
+                    # Eixo X: Define a posição principal pelo Status
+                    x=alt.X('STATUS REDAÇÃO', title='Status da Redação'),
+                    # Eixo Y: Define a altura pela Contagem
+                    y=alt.Y('Contagem Status', title='Contagem de Candidatos'),
+                    # Cor: Define a cor pelo Município (o que queremos comparar)
+                    color=alt.Color('NOME MUN. PROVA', title='Município'),
+                    # xOffset: Desloca as barras dentro da mesma categoria STATUS REDAÇÃO, agrupando-as
+                    xOffset='NOME MUN. PROVA',
+                    tooltip=['STATUS REDAÇÃO', 'NOME MUN. PROVA', 'Contagem Status']
+                ).properties(
+                    title="Frequência de Status de Redação por Município"
+                ).interactive()
+
+                st.altair_chart(grouped_bar_chart, use_container_width=True)
+    elif status_exists and 'NOME MUN. PROVA' in df_filtrado.columns:
+                 st.info("Os dados para o Gráfico de Barras Agrupadas (Status x Município) não estão prontos. Verifique se os filtros estão aplicados corretamente.")
+            # ----------------------------------------------------------------------
+    st.markdown("---")
+            
