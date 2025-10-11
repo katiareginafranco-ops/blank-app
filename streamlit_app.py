@@ -28,12 +28,12 @@ st.markdown("<p style='font-size: 34px;'> Bem-vindo ao protótipo de análise da
 "Neste aplicativo, vamos desmistificar os critérios de anulação para ajudar estudantes e educadores a se prepararem melhor. Embora o recorte se dê nos resultados do estado do Espírito Santo, estudantes de outros estados também podem utilizar as informações.  " \
 "" \
 "Além da análise de todo o estado, você pode explorar os principais motivos que levaram à nota zero nas redações Enem 2024 selecionando os filtros de seu interesse: por município, status e tipo de escola.</p>", unsafe_allow_html=True)
-st.markdown("""
-            
+
+
+       
 st.subtitle("📊 Redação ENEM 2024: Por que a Nota Zero?")
     st.markdown("""
- st.markdown("<p style='font-size: 40 px;'> 📝Entenda as situações das redações avaliadas no enem 2024." \
-"" \          
+ st.markdown("<p style='font-size: 40 px;'> 📝Entenda as situações das redações avaliadas no enem 2024.""</p>")        
 <table style='font-size:18px; border-collapse: collapse; width: auto;'>
 <thead><tr><th style='border-bottom: 2px solid #ddd; padding: 8px;'>Código</th><th style='border-bottom: 2px solid #ddd; padding: 8px;'>Descrição</th>
 <th style='border-bottom: 2px solid #ddd; padding: 8px;'>Sentido</th></tr></thead>
