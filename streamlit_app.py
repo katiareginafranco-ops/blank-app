@@ -32,8 +32,8 @@ st.markdown("<p style='font-size: 34px;'> Bem-vindo ao protótipo de análise da
 
        
 st.subtitle("📊 Redação ENEM 2024: Por que a Nota Zero?")
-    st.markdown("""
- st.markdown("<p style='font-size: 40 px;'> 📝Entenda as situações das redações avaliadas no enem 2024.""</p>")        
+st.markdown("""
+st.markdown("<p style='font-size: 40 px;'> 📝Entenda as situações das redações avaliadas no enem 2024.""</p>")        
 <table style='font-size:18px; border-collapse: collapse; width: auto;'>
 <thead><tr><th style='border-bottom: 2px solid #ddd; padding: 8px;'>Código</th><th style='border-bottom: 2px solid #ddd; padding: 8px;'>Descrição</th>
 <th style='border-bottom: 2px solid #ddd; padding: 8px;'>Sentido</th></tr></thead>
