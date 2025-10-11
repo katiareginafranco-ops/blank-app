@@ -158,8 +158,6 @@ chart = alt.Chart(incidencia).mark_bar().encode(
 
 st.altair_chart(chart, use_container_width=True)
 
-# Exibe no Streamlit
-st.pyplot(fig1)
 
 st.markdown("---")
 st.markdown("<p style='font-size:14px;'>Fonte de Dados: Microdados do ENEM, INEP.<br>Projeto de pós-graduação em Mineração de Dados Educacionais — UFES.</p>", unsafe_allow_html=True)
