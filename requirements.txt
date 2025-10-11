@@ -3,4 +3,4 @@ pandas
 numpy
 matplotlib.pyplot
 altair
-from itertools import product
+itertools
